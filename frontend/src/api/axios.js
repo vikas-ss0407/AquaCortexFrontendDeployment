@@ -2,7 +2,7 @@ import axios from "axios";
 import { getCurrentUserToken } from "../firebase/auth";
 
 const apiClient = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "https://aquacortexbackenddeployment.onrender.com/api",
   timeout: 4000
 });
 

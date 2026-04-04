@@ -1,7 +1,7 @@
 import axios from "axios";
 import { login as firebaseLogin, logout as firebaseLogout, signup as firebaseSignup, subscribeToAuthChanges } from "../firebase/auth";
 
-const BASE_URL = "http://localhost:5000/api/auth";
+const BASE_URL = "https://aquacortexbackenddeployment.onrender.com/api/auth";
 
 const registerUserInBackend = async (userData) => {
   try {
