@@ -47,6 +47,18 @@ const WaterAnalysis = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const minIrrigationStart = getLocalDateTimeMin();
+  const sufficiency = result?.sufficiency || "Insufficient";
+  const isSufficient = sufficiency === "Sufficient";
+  const availableWater = result?.availableWaterL ?? result?.currentStorageLiters ?? 0;
+  const requiredWater = result?.requiredWater ?? result?.requiredWaterL ?? 0;
+  const predictedWaterLevel = result?.predictedWaterLevel ?? 0;
+  const hoursUntilIrrigation = result?.hoursUntilIrrigation ?? 0;
+  const sensorDistance = result?.sensorDistanceCm ?? result?.currentWaterLevel ?? 0;
+  const incomingWaterTillSelectedTime =
+    result?.incomingWaterTillIrrigationL ?? ((result?.plannedIrrigation ?? 0) + (result?.expectedRainfall ?? 0));
+  const expectedWaterLossUntilIrrigation =
+    result?.expectedWaterLossUntilIrrigationL ?? Math.max(0, availableWater - predictedWaterLevel);
+  const remainingWaterAfterIrrigation = Math.max(0, availableWater + incomingWaterTillSelectedTime - requiredWater - expectedWaterLossUntilIrrigation);
 
   useEffect(() => {
     const load = async () => {
@@ -180,73 +192,140 @@ const WaterAnalysis = () => {
                 {result ? (
                   <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4 md:space-y-6">
                     {/* Main Verdict Hero */}
-                    <div className={`relative overflow-hidden rounded-[2rem] border p-6 md:rounded-[2.5rem] md:p-8 ${result.isSufficient ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'}`}>
+                    <div className={`relative overflow-hidden rounded-[2rem] border p-6 md:rounded-[2.5rem] md:p-8 ${isSufficient ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'}`}>
                       <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-4">
-                          {result.isSufficient ? <CheckCircle size={28} className="md:size-32" /> : <AlertTriangle size={28} className="md:size-32" />}
+                          {isSufficient ? <CheckCircle size={28} className="md:size-32" /> : <AlertTriangle size={28} className="md:size-32" />}
                           <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">AI Verdict</span>
                         </div>
-                        <h2 className="mb-2 text-xl font-black leading-tight sm:text-2xl md:text-3xl">{result.message}</h2>
+                        <h2 className="mb-2 text-xl font-black leading-tight sm:text-2xl md:text-3xl">{result.message || sufficiency}</h2>
                         <p className="text-xs md:text-sm opacity-90">Based on current storage and predicted environmental losses.</p>
                       </div>
                       <Waves className="absolute -bottom-10 -right-10 w-48 h-48 md:w-64 md:h-64 opacity-20 rotate-12 pointer-events-none" />
                     </div>
 
-                    {/* Intelligence Grid */}
-                    <div className="grid sm:grid-cols-2 gap-4">
+                    {/* Intelligence Grid - Top Summary */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5">
                       {/* Weather Card */}
-                      <div className="bg-sky-500/10 border border-sky-500/20 rounded-[1.5rem] md:rounded-3xl p-5 md:p-6">
-                        <div className="flex items-center gap-2 text-sky-400 mb-4">
-                          <CloudSun size={18} />
-                          <h4 className="text-[10px] font-bold uppercase tracking-widest">Climate Forecast</h4>
+                      <div className="min-w-0 bg-sky-500/10 border border-sky-500/20 rounded-[1.5rem] md:rounded-2xl p-5 md:p-6">
+                        <div className="flex items-center gap-2 text-sky-400 mb-3">
+                          <CloudSun size={16} />
+                          <h4 className="text-xs md:text-sm font-bold uppercase tracking-widest">Climate</h4>
                         </div>
-                        <div className="flex justify-between items-center">
+                        <div className="space-y-3">
                           <div>
-                            <p className="text-xl md:text-2xl font-black">{result.temperature}°C</p>
-                            <p className="text-[9px] text-sky-400/60 uppercase font-bold tracking-tighter">Local Temp</p>
+                            <p className="text-2xl lg:text-2xl 2xl:text-3xl font-black leading-none">{result.temperature ?? 28}°C</p>
+                            <p className="text-xs text-sky-400/70 uppercase font-bold">Temp</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xl md:text-2xl font-black">{result.humidity}%</p>
-                            <p className="text-[9px] text-sky-400/60 uppercase font-bold tracking-tighter">Air Humidity</p>
+                          <div>
+                            <p className="text-2xl lg:text-2xl 2xl:text-3xl font-black leading-none">{result.humidity ?? 60}%</p>
+                            <p className="text-xs text-sky-400/70 uppercase font-bold">Humidity</p>
                           </div>
                         </div>
                       </div>
 
                       {/* Loss Factors Card */}
-                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-[1.5rem] md:rounded-3xl p-5 md:p-6">
-                        <div className="flex items-center gap-2 text-amber-400 mb-4">
-                          <AlertTriangle size={18} />
-                          <h4 className="text-[10px] font-bold uppercase tracking-widest">Predicted Losses</h4>
+                      <div className="min-w-0 bg-amber-500/10 border border-amber-500/20 rounded-[1.5rem] md:rounded-2xl p-5 md:p-6">
+                        <div className="flex items-center gap-2 text-amber-400 mb-3">
+                          <AlertTriangle size={16} />
+                          <h4 className="text-xs md:text-sm font-bold uppercase tracking-widest">Losses</h4>
                         </div>
+                        <div className="space-y-2.5">
+                           <div className="flex items-center justify-between gap-2 text-sm lg:text-sm 2xl:text-base">
+                             <span className="text-amber-100/60">Evap</span>
+                             <span className="font-black text-amber-400 whitespace-nowrap">{result.evaporationLoss}L</span>
+                           </div>
+                        </div>
+                      </div>
+
+                      {/* Current Water & Sufficiency */}
+                      <div className="min-w-0 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.5rem] md:rounded-2xl p-5 md:p-6">
+                        <h4 className="text-xs md:text-sm font-bold uppercase tracking-widest text-emerald-300/70 mb-3">Water Status</h4>
                         <div className="space-y-2">
-                           <div className="flex justify-between text-xs md:text-sm">
-                             <span className="text-amber-100/60">Evaporation</span>
-                             <span className="font-bold text-amber-400">{result.evaporationLoss} L</span>
-                           </div>
-                           <div className="flex justify-between text-xs md:text-sm">
-                             <span className="text-amber-100/60">Leakage</span>
-                             <span className="font-bold text-amber-400">{result.leakageLoss} L</span>
-                           </div>
+                          <div>
+                            <p className="text-2xl lg:text-2xl 2xl:text-3xl font-black text-emerald-400 leading-none">{Math.round(availableWater)}</p>
+                            <p className="text-xs text-emerald-300/70">Available Liters</p>
+                          </div>
+                          <div>
+                            <p className={`text-2xl lg:text-xl 2xl:text-3xl font-black leading-tight break-words ${isSufficient ? 'text-emerald-400' : 'text-rose-400'}`}>{sufficiency}</p>
+                            <p className="text-xs text-emerald-300/70">Status</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Time to Irrigation */}
+                      <div className="min-w-0 bg-cyan-500/10 border border-cyan-500/20 rounded-[1.5rem] md:rounded-2xl p-5 md:p-6">
+                        <h4 className="text-xs md:text-sm font-bold uppercase tracking-widest text-cyan-300/70 mb-3">Timeline</h4>
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <p className="text-3xl lg:text-3xl 2xl:text-4xl font-black text-cyan-300 leading-none">{Number(hoursUntilIrrigation).toFixed(1)}</p>
+                            <p className="text-xs font-bold text-cyan-300/70">hrs</p>
+                          </div>
+                          <p className="text-xs text-cyan-300/70 mt-1.5">{Number(hoursUntilIrrigation / 24).toFixed(1)} days away</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sensor Insight & Requirement Analysis */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+                      {/* Sensor Insight Breakdown */}
+                      <div className="min-w-0 bg-black/30 border border-white/10 rounded-[1.5rem] md:rounded-2xl p-5 md:p-6">
+                        <h4 className="text-xs md:text-sm font-bold uppercase tracking-widest text-emerald-300/70 mb-4">Sensor Insight</h4>
+                        <div className="space-y-3">
+                          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/15 p-4">
+                            <p className="text-xs font-bold uppercase text-cyan-300/70 mb-1">Sensor Distance</p>
+                            <p className="text-3xl md:text-4xl font-black text-cyan-300 leading-none">{Math.round(sensorDistance)} cm</p>
+                            <p className="text-xs text-cyan-300/50 mt-1">Raw ultrasonic reading</p>
+                          </div>
+                          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-4">
+                            <p className="text-xs font-bold uppercase text-emerald-300/70 mb-1">Water Level</p>
+                            <p className="text-3xl md:text-4xl font-black text-emerald-300 leading-none">{Math.round(availableWater)} L</p>
+                            <p className="text-xs text-emerald-300/50 mt-1">Estimated current water in well</p>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Requirement Check */}
+                      <div className="min-w-0 bg-black/30 border border-white/10 rounded-[1.5rem] md:rounded-2xl p-5 md:p-6">
+                        <h4 className="text-xs md:text-sm font-bold uppercase tracking-widest text-emerald-300/70 mb-4">Requirement</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center gap-2 bg-rose-500/20 border border-rose-500/30 rounded-xl p-3">
+                            <div>
+                              <p className="text-xs text-rose-300/70 mb-0.5">Demand</p>
+                              <p className="text-xl lg:text-xl 2xl:text-2xl font-black text-rose-400 leading-none">{Math.round(requiredWater)}L</p>
+                            </div>
+                            <p className="text-xs text-rose-300/60 whitespace-nowrap">{result.treeCount} trees</p>
+                          </div>
+                          <div className="flex justify-between items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-3">
+                            <div>
+                              <p className="text-xs text-emerald-300/70 mb-0.5">Available (After irrigation & evaporation)</p>
+                              <p className="text-xl lg:text-xl 2xl:text-2xl font-black text-emerald-400 leading-none">{Math.round(remainingWaterAfterIrrigation)}L</p>
+                            </div>
+                            <p className={`text-xs md:text-sm font-bold text-right whitespace-nowrap ${remainingWaterAfterIrrigation >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {Math.round(Math.abs(remainingWaterAfterIrrigation))}L <br/> {remainingWaterAfterIrrigation >= 0 ? '✓' : '✗'}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Detailed Data Table */}
                     <div className="bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-3xl p-5 md:p-6 backdrop-blur-md">
-                      <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300/60 mb-5">Volumetric Inventory</h4>
+                      <h4 className="text-xs md:text-sm font-bold uppercase tracking-[0.2em] text-emerald-300/70 mb-5">Volumetric Inventory</h4>
                       <div className="space-y-3">
                         <div className="flex flex-col items-start justify-between gap-1 rounded-xl md:rounded-2xl bg-white/5 p-4 sm:flex-row sm:items-center">
-                          <span className="text-xs md:text-sm font-medium">Available Supply</span>
-                          <span className="text-base md:text-lg font-black text-emerald-400">
-                            {result.availableWaterL || Math.round(result.currentStorageLiters || 0)} 
-                            <span className="ml-1 text-[9px] font-normal opacity-60">LITERS</span>
+                          <span className="text-sm md:text-base font-medium">Available Supply</span>
+                          <span className="text-xl md:text-2xl font-black text-emerald-400">
+                            {Math.round(availableWater)} 
+                            <span className="ml-1 text-xs font-normal opacity-70">LITERS</span>
                           </span>
                         </div>
                         <div className="flex flex-col items-start justify-between gap-1 rounded-xl md:rounded-2xl border-l-4 border-rose-500 bg-white/5 p-4 sm:flex-row sm:items-center">
-                          <span className="text-xs md:text-sm font-medium text-rose-100">Demand Requirement</span>
-                          <span className="text-base md:text-lg font-black text-rose-400">
-                            {result.requiredWaterL || Math.round(result.requiredLiters || 0)} 
-                            <span className="ml-1 text-[9px] font-normal opacity-60">LITERS</span>
+                          <span className="text-sm md:text-base font-medium text-rose-100">Demand Requirement</span>
+                          <span className="text-xl md:text-2xl font-black text-rose-400">
+                            {Math.round(requiredWater)} 
+                            <span className="ml-1 text-xs font-normal opacity-70">LITERS</span>
                           </span>
                         </div>
                       </div>
